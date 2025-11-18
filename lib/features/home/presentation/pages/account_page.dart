@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:expense_tracker/features/home/presentation/pages/edit_wallet_page.dart';
+import 'package:expense_tracker/features/home/presentation/pages/add_wallet_from_account_page.dart';
 
 class AccountPage extends StatelessWidget {
   const AccountPage({super.key});
@@ -31,18 +32,15 @@ class AccountPage extends StatelessWidget {
       body: SafeArea(
         child: Column(
           children: [
-            
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 24, 0, 32),
               child: Column(
                 children: [
-                  
                   SizedBox(
                     height: 180,
                     width: double.infinity,
                     child: Stack(
                       children: [
-                       
                         Positioned(
                           left: -30,
                           top: 40,
@@ -60,7 +58,6 @@ class AccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        
                         Positioned(
                           left: 100,
                           top: 20,
@@ -78,7 +75,6 @@ class AccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // Center circle
                         Positioned(
                           left: 150,
                           top: 90,
@@ -96,7 +92,6 @@ class AccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        
                         Positioned(
                           right: 50,
                           top: 80,
@@ -114,7 +109,6 @@ class AccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        
                         Positioned(
                           right: -40,
                           top: 0,
@@ -132,7 +126,6 @@ class AccountPage extends StatelessWidget {
                             ),
                           ),
                         ),
-                        // Center content
                         Center(
                           child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                             stream: user == null
@@ -183,71 +176,122 @@ class AccountPage extends StatelessWidget {
                 ],
               ),
             ),
-            
-            GestureDetector(
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const EditWalletPage(),
-                  ),
-                );
-              },
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 16),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Row(
-                  children: [
-                    SvgPicture.asset('assets/wallet_2.svg'),
-                    const SizedBox(width: 12),
-                    const Expanded(
-                      child: Text(
-                        'Wallet',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                    StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                      stream: user == null
-                          ? Stream.empty()
-                          : FirebaseFirestore.instance
-                              .collection('users')
-                              .doc(user.uid)
-                              .collection('transactions')
-                              .snapshots(),
-                      builder: (context, snapshot) {
-                        double total = 0;
-                        if (snapshot.hasData) {
-                          for (final doc in snapshot.data!.docs) {
-                            final data = doc.data();
-                            final amount = (data['amount'] as num).toDouble();
-                            final isIncome = (data['isIncome'] as bool?) ?? false;
-                            total += isIncome ? amount : -amount;
-                          }
-                        }
-                        return Text(
-                          '₹${total.toStringAsFixed(0)}',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
+            Expanded(
+              child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                stream: user == null
+                    ? const Stream.empty()
+                    : FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('wallets')
+                        .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const EditWalletPage(),
                           ),
                         );
                       },
-                    ),
-                  ],
-                ),
+                      child: Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: const [
+                            SizedBox.shrink(),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final docs = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: docs.length,
+                    itemBuilder: (context, index) {
+                      final walletDoc = docs[index];
+                      final data = walletDoc.data();
+                      final name = (data['name'] as String?)?.trim();
+                      String label;
+                      if (name != null && name.isNotEmpty) {
+                        label = '$name (Wallet)';
+                      } else {
+                        label = 'Wallet (Wallet)';
+                      }
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const EditWalletPage(),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              SvgPicture.asset('assets/wallet_2.svg'),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  label,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                                stream: user == null
+                                    ? Stream.empty()
+                                    : FirebaseFirestore.instance
+                                        .collection('users')
+                                        .doc(user.uid)
+                                        .collection('transactions')
+                                        .where('walletId', isEqualTo: walletDoc.id)
+                                        .snapshots(),
+                                builder: (context, snapshot) {
+                                  double total = 0;
+                                  if (snapshot.hasData) {
+                                    for (final doc in snapshot.data!.docs) {
+                                      final txData = doc.data();
+                                      final amount = (txData['amount'] as num).toDouble();
+                                      final isIncome = (txData['isIncome'] as bool?) ?? false;
+                                      total += isIncome ? amount : -amount;
+                                    }
+                                  }
+                                  return Text(
+                                    '\u20b9${total.toStringAsFixed(0)}',
+                                    style: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
             ),
             Divider(thickness: 0.2,),
-
-             Spacer(),
-
-            
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
               child: SizedBox(
@@ -262,7 +306,12 @@ class AccountPage extends StatelessWidget {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => AddWalletFromAccountPage(),
+                      ),
+                    );
                   },
                   child: const Text(
                     '+ Add new wallet',

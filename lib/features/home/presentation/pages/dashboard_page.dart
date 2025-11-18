@@ -379,7 +379,18 @@ class _DashboardPageState extends State<DashboardPage> {
                                 .snapshots();
                           }(),
                           builder: (context, snapshot) {
-                            
+                            if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                              return const Center(
+                                child: Text(
+                                  'No spend data yet for this period',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              );
+                            }
+
                             final now = DateTime.now();
                             int bucketCount;
                             int Function(DateTime) bucketIndex;
@@ -400,24 +411,35 @@ class _DashboardPageState extends State<DashboardPage> {
                             }
 
                             final buckets = List<double>.filled(bucketCount, 0);
-                            if (snapshot.hasData) {
-                              for (final doc in snapshot.data!.docs) {
-                                final data = doc.data();
-                                final isIncome = (data['isIncome'] as bool?) ?? false;
-                                if (isIncome) continue; 
-                                final ts = data['date'] as Timestamp;
-                                final dt = ts.toDate();
-                                final amt = (data['amount'] as num).toDouble();
-                                final idx = bucketIndex(dt);
-                                if (idx >= 0 && idx < buckets.length) {
-                                  buckets[idx] += amt;
-                                }
+                            for (final doc in snapshot.data!.docs) {
+                              final data = doc.data();
+                              final isIncome = (data['isIncome'] as bool?) ?? false;
+                              if (isIncome) continue; // only expenses for spend chart
+                              final ts = data['date'] as Timestamp;
+                              final dt = ts.toDate();
+                              final amt = (data['amount'] as num).toDouble();
+                              final idx = bucketIndex(dt);
+                              if (idx >= 0 && idx < buckets.length) {
+                                buckets[idx] += amt;
                               }
                             }
 
                             final spots = <FlSpot>[];
                             for (var i = 0; i < buckets.length; i++) {
                               spots.add(FlSpot(i.toDouble(), buckets[i]));
+                            }
+
+                            final hasNonZero = buckets.any((v) => v > 0);
+                            if (!hasNonZero) {
+                              return const Center(
+                                child: Text(
+                                  'No expenses recorded for this period',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              );
                             }
 
                             return LineChart(

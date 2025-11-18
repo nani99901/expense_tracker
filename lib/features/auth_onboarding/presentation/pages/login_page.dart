@@ -77,11 +77,9 @@ Future<void> _submit() async {
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
         try {
-          
           final snap = await FirebaseFirestore.instance
-              .collection('users')
-              .doc(user.uid)
-              .collection('transactions')
+              .collectionGroup('transactions')
+              .where('uid', isEqualTo: user.uid)
               .limit(1)
               .get();
           if (!mounted) return;

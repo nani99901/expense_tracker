@@ -22,6 +22,8 @@ class HomeRepositoryFirestore implements HomeRepository {
 
   CollectionReference<Map<String, dynamic>> _txnsCol(String uid) => fs.collection('users').doc(uid).collection('transactions');
   DocumentReference<Map<String, dynamic>> _userDoc(String uid) => fs.collection('users').doc(uid);
+  CollectionReference<Map<String, dynamic>> _walletTxnsCol(String uid, String walletId) =>
+      fs.collection('users').doc(uid).collection('wallets').doc(walletId).collection('transactions');
 
   @override
   Stream<List<Txn>> streamTransactions(String uid) {
@@ -46,8 +48,18 @@ class HomeRepositoryFirestore implements HomeRepository {
   Future<void> addTransaction(String uid, Txn txn) async {
     final userDoc = _userDoc(uid);
     final txnDoc = _txnsCol(uid).doc(txn.id);
+    final walletTxnDoc = _walletTxnsCol(uid, txn.walletId).doc(txn.id);
     final batch = fs.batch();
     batch.set(txnDoc, {
+      'id': txn.id,
+      'amount': txn.amount,
+      'isIncome': txn.isIncome,
+      'category': txn.category,
+      'description': txn.description,
+      'date': Timestamp.fromDate(txn.date),
+      'walletId': txn.walletId,
+    }, SetOptions(merge: true));
+    batch.set(walletTxnDoc, {
       'id': txn.id,
       'amount': txn.amount,
       'isIncome': txn.isIncome,
@@ -88,6 +100,8 @@ class HomeRepositoryFirestore implements HomeRepository {
   Future<void> updateTransaction(String uid, Txn before, Txn after) async {
     final userDoc = _userDoc(uid);
     final txnDoc = _txnsCol(uid).doc(before.id);
+    final beforeWalletTxnDoc = _walletTxnsCol(uid, before.walletId).doc(before.id);
+    final afterWalletTxnDoc = _walletTxnsCol(uid, after.walletId).doc(after.id);
 
     // Compute aggregate deltas
     final beforeIncome = before.isIncome ? before.amount : 0.0;
@@ -110,6 +124,29 @@ class HomeRepositoryFirestore implements HomeRepository {
       'walletId': after.walletId,
     }, SetOptions(merge: true));
 
+    if (before.walletId == after.walletId) {
+      batch.set(afterWalletTxnDoc, {
+        'id': after.id,
+        'amount': after.amount,
+        'isIncome': after.isIncome,
+        'category': after.category,
+        'description': after.description,
+        'date': Timestamp.fromDate(after.date),
+        'walletId': after.walletId,
+      }, SetOptions(merge: true));
+    } else {
+      batch.delete(beforeWalletTxnDoc);
+      batch.set(afterWalletTxnDoc, {
+        'id': after.id,
+        'amount': after.amount,
+        'isIncome': after.isIncome,
+        'category': after.category,
+        'description': after.description,
+        'date': Timestamp.fromDate(after.date),
+        'walletId': after.walletId,
+      }, SetOptions(merge: true));
+    }
+
     batch.set(userDoc, {
       'totalIncome': FieldValue.increment(incomeDelta),
       'totalExpense': FieldValue.increment(expenseDelta),
@@ -124,9 +161,11 @@ class HomeRepositoryFirestore implements HomeRepository {
   Future<void> deleteTransaction(String uid, Txn txn) async {
     final userDoc = _userDoc(uid);
     final txnDoc = _txnsCol(uid).doc(txn.id);
+    final walletTxnDoc = _walletTxnsCol(uid, txn.walletId).doc(txn.id);
 
     final batch = fs.batch();
     batch.delete(txnDoc);
+    batch.delete(walletTxnDoc);
     batch.set(userDoc, {
       'totalIncome': FieldValue.increment(txn.isIncome ? -txn.amount : 0),
       'totalExpense': FieldValue.increment(txn.isIncome ? 0 : -txn.amount),

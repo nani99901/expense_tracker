@@ -3,6 +3,8 @@ import 'package:expense_tracker/features/home/presentation/bloc/home_bloc.dart';
 import 'package:expense_tracker/features/home/presentation/bloc/home_event.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddTxnPage extends StatefulWidget {
   final bool isIncome;
@@ -29,6 +31,8 @@ class _AddTxnPageState extends State<AddTxnPage> {
     'Rent',
     'Other',
   ];
+  bool _loadingWallets = false;
+  List<Map<String, String>> _wallets = [];
 
   @override
   void dispose() {
@@ -48,6 +52,60 @@ class _AddTxnPageState extends State<AddTxnPage> {
       selectedCategory = t.category.isEmpty ? null : t.category;
       selectedWallet = t.walletId.isEmpty ? null : t.walletId;
       descCtrl.text = t.description;
+    }
+    _loadWallets();
+  }
+
+  Future<void> _loadWallets() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() {
+        _wallets = [];
+        _loadingWallets = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _loadingWallets = true;
+    });
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('wallets')
+          .get();
+
+      final loaded = snap.docs.map((doc) {
+        final data = doc.data();
+        final name = (data['name'] as String?) ?? 'Wallet';
+        return {
+          'id': doc.id,
+          'name': name,
+        };
+      }).toList();
+
+      if (!mounted) return;
+      setState(() {
+        _wallets = loaded;
+        _loadingWallets = false;
+        // If no wallet preselected (new txn) and we have wallets, default to first
+        if (selectedWallet == null && _wallets.isNotEmpty) {
+          selectedWallet = _wallets.first['id'];
+        }
+        // If editing and previous walletId no longer exists, clear selection
+        if (selectedWallet != null &&
+            !_wallets.any((w) => w['id'] == selectedWallet)) {
+          selectedWallet = null;
+        }
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _wallets = [];
+        _loadingWallets = false;
+      });
     }
   }
 
@@ -240,15 +298,17 @@ class _AddTxnPageState extends State<AddTxnPage> {
                           vertical: 16,
                         ),
                       ),
-                      items: ['Default Wallet', 'Cash', 'Bank Account']
+                      items: _wallets
                           .map(
-                            (wallet) => DropdownMenuItem(
-                              value: wallet,
-                              child: Text(wallet),
+                            (wallet) => DropdownMenuItem<String>(
+                              value: wallet['id'],
+                              child: Text(wallet['name'] ?? ''),
                             ),
                           )
                           .toList(),
-                      onChanged: (val) => setState(() => selectedWallet = val),
+                      onChanged: _loadingWallets || _wallets.isEmpty
+                          ? null
+                          : (val) => setState(() => selectedWallet = val),
                     ),
                     const SizedBox(height: 16),
                     InkWell(
@@ -342,6 +402,12 @@ class _AddTxnPageState extends State<AddTxnPage> {
                             );
                             return;
                           }
+                          if (widget.initialTxn == null && selectedWallet == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Select a wallet')),
+                            );
+                            return;
+                          }
                           final isIncome = widget.initialTxn?.isIncome ?? widget.isIncome;
                           if (widget.initialTxn != null) {
                             // Edit mode: keep same id and original date
@@ -358,7 +424,6 @@ class _AddTxnPageState extends State<AddTxnPage> {
                             context.read<HomeBloc>().add(UpdateTransaction(before: before, after: after));
                             Navigator.pop(context, after);
                           } else {
-                            
                             final txn = Txn(
                               id: UniqueKey().toString(),
                               amount: amt,
@@ -366,7 +431,7 @@ class _AddTxnPageState extends State<AddTxnPage> {
                               category: selectedCategory ?? (isIncome ? 'Income' : 'Expense'),
                               description: descCtrl.text.trim(),
                               date: DateTime.now(),
-                              walletId: selectedWallet ?? 'default',
+                              walletId: selectedWallet!,
                             );
                             context.read<HomeBloc>().add(AddTransaction(txn));
                             Navigator.pop(context);

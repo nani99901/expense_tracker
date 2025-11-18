@@ -86,13 +86,135 @@ class _EditWalletPageState extends State<EditWalletPage> {
           ),
         ),
         actions:  [
-          // Padding(
-          //   padding: EdgeInsets.only(right: 16),
-          //   child: Icon(Icons.delete_outline, color: Colors.white),
-          // ),
           GestureDetector(
-            onTap: () {
-              
+            onTap: () async {
+              if (_walletDocId == null) return;
+
+              final confirmed = await showModalBottomSheet<bool>(
+                context: context,
+                isScrollControlled: false,
+                backgroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                ),
+                builder: (ctx) {
+                  return SizedBox(
+                    height: 260,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 28),
+                      child: Column(
+                        children: [
+                          Container(
+                            width: 44,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFD8CFF7),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                          ),
+                          const SizedBox(height: 20),
+                          const Text(
+                            'Delete account?',
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          const Text(
+                            'Are you sure you want to delete this account?',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: Color(0xFF8E8E93),
+                              height: 1.4,
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Container(
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF3EFFF),
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text(
+                                      'No',
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.primary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Container(
+                                  height: 54,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary,
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  child: TextButton(
+                                    style: TextButton.styleFrom(
+                                      padding: EdgeInsets.zero,
+                                    ),
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text(
+                                      'Yes',
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w600,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+
+              if (confirmed == true) {
+                final user = FirebaseAuth.instance.currentUser;
+                if (user != null && _walletDocId != null) {
+                  try {
+                    final walletRef = FirebaseFirestore.instance
+                        .collection('users')
+                        .doc(user.uid)
+                        .collection('wallets')
+                        .doc(_walletDocId);
+
+                    final txSnap = await walletRef.collection('transactions').get();
+                    for (final doc in txSnap.docs) {
+                      await doc.reference.delete();
+                    }
+
+                    await walletRef.delete();
+                  } catch (_) {}
+                }
+
+                if (mounted) {
+                  Navigator.of(context).pop();
+                }
+              }
             },
             child: Padding(
               padding: const EdgeInsets.only(right:8.0),
@@ -122,12 +244,13 @@ class _EditWalletPageState extends State<EditWalletPage> {
                  ),
                 const SizedBox(height: 12),
                 StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-                  stream: user == null
+                  stream: user == null || _walletDocId == null
                       ? const Stream.empty()
                       : FirebaseFirestore.instance
                           .collection('users')
                           .doc(user.uid)
                           .collection('transactions')
+                          .where('walletId', isEqualTo: _walletDocId)
                           .snapshots(),
                   builder: (context, snapshot) {
                     double total = 0;
@@ -140,7 +263,7 @@ class _EditWalletPageState extends State<EditWalletPage> {
                       }
                     }
                     return Align(
-                  alignment: AlignmentGeometry.topLeft,
+                      alignment: AlignmentGeometry.topLeft,
                       child: Text(
                         '₹${total.toStringAsFixed(0)}',
                         style: const TextStyle(
