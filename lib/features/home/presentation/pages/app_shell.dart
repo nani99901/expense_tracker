@@ -5,6 +5,7 @@ import 'package:expense_tracker/features/home/presentation/pages/save_transactio
 import 'package:expense_tracker/features/home/presentation/pages/profile_page.dart';
 import 'package:expense_tracker/features/home/presentation/pages/transactions_page.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter_svg/svg.dart';
 
@@ -21,7 +22,13 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
+    return WillPopScope(
+      onWillPop: () async {
+        
+        await SystemNavigator.pop();
+        return false;
+      },
+      child: Stack(
         children: [
           Scaffold(
             extendBody: true,
@@ -80,11 +87,11 @@ class _AppShellState extends State<AppShell> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _buildNavItem(Icons.home, 'Home', 0),
-                        _buildNavItem(Icons.swap_horiz, 'Transaction', 1),
+                        _buildNavItem('home', 'Home', 0),
+                        _buildNavItem('transaction', 'Transaction', 1),
                         const SizedBox(width: 60),
-                        _buildNavItem(Icons.pie_chart_outline, 'Budget', 2),
-                        _buildNavItem(Icons.person_outline, 'Profile', 3),
+                        _buildNavItem('pie-chart', 'Budget', 2),
+                        _buildNavItem('user', 'Profile', 3),
                       ],
                     ),
                   ),
@@ -131,10 +138,11 @@ class _AppShellState extends State<AppShell> {
               ),
             ),
         ],
-      );
+      ),
+    );
   }
 
-  Widget _buildNavItem(IconData icon, String label, int index) {
+  Widget _buildNavItem(String selectedIcon, String label, int index) {
     final isSelected = _index == index;
     return Expanded(
       child: InkWell(
@@ -148,11 +156,10 @@ class _AppShellState extends State<AppShell> {
           mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: isSelected ? AppColors.primary : Colors.grey,
-              size: 28,
-            ),
+            Container(
+              height: 35,
+              width: 35,
+              child: SvgPicture.asset('assets/$selectedIcon.svg',colorFilter: ColorFilter.mode(isSelected ? AppColors.primary : Colors.grey, BlendMode.srcIn),)),
             const SizedBox(height: 4),
             Text(
               label,

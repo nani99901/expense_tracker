@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:expense_tracker/features/home/presentation/pages/settings_page.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,6 +8,7 @@ import 'package:expense_tracker/features/auth_onboarding/presentation/pages/land
 import 'package:expense_tracker/features/home/presentation/pages/account_page.dart';
 import 'package:flutter_svg/svg.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:path_provider/path_provider.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -145,6 +148,14 @@ class ProfilePage extends StatelessWidget {
                           ),
                         );
                         
+                      },
+                    ),
+                             _menuTile(
+                      context,
+                      assetName: 'download_icon',
+                      title: 'Export Data',
+                      onTap: () async {
+                        await _exportTransactionsAsCsv(context);
                       },
                     ),
                     const Divider(height: 1, color: Color(0xFFF3F3F3)),
@@ -321,5 +332,82 @@ class ProfilePage extends StatelessWidget {
       ),
       trailing: const Icon(Icons.chevron_right, color: Colors.black45),
     );
+  }
+
+  Future<void> _exportTransactionsAsCsv(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No logged in user to export data for')),
+      );
+      return;
+    }
+
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('transactions')
+          .orderBy('date', descending: false)
+          .get();
+
+      if (snap.docs.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No transactions to export')),
+        );
+        return;
+      }
+
+      final buffer = StringBuffer();
+
+      // CSV header
+      buffer.writeln('id,date,amount,type,category,description,walletId');
+
+      for (final doc in snap.docs) {
+        final data = doc.data();
+        final id = data['id'] ?? doc.id;
+        final ts = data['date'] as Timestamp?;
+        final date = ts != null ? ts.toDate().toIso8601String() : '';
+        final amount = (data['amount'] as num?)?.toDouble() ?? 0.0;
+        final isIncome = (data['isIncome'] as bool?) ?? false;
+        final type = isIncome ? 'income' : 'expense';
+        final category = (data['category'] as String?) ?? '';
+        final description = (data['description'] as String?) ?? '';
+        final walletId = (data['walletId'] as String?) ?? '';
+
+        String escape(String value) {
+          var v = value.replaceAll('"', '""');
+          if (v.contains(',') || v.contains('\n')) {
+            v = '"$v"';
+          }
+          return v;
+        }
+
+        buffer.writeln([
+          escape(id.toString()),
+          escape(date),
+          amount.toString(),
+          escape(type),
+          escape(category),
+          escape(description),
+          escape(walletId),
+        ].join(','));
+      }
+
+      final bytes = buffer.toString().codeUnits;
+      final directory = await getApplicationDocumentsDirectory();
+      final fileName = 'transactions_export_${DateTime.now().millisecondsSinceEpoch}.csv';
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(bytes, flush: true);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('CSV exported to ${file.path}')),
+      );
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to export data')),
+      );
+    }
   }
 }

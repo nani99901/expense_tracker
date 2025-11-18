@@ -1,5 +1,9 @@
 import 'package:expense_tracker/core/constants/colors.dart';
 import 'package:expense_tracker/features/auth_onboarding/presentation/pages/onboarding.dart';
+import 'package:expense_tracker/features/auth_onboarding/presentation/pages/pin_setup_page.dart';
+import 'package:expense_tracker/features/auth_onboarding/presentation/pages/pin_unlock_page.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 // import 'onboarding_intro_page.dart'; // you'll create this next
@@ -38,7 +42,31 @@ class _LandingScreenState extends State<LandingScreen>
     _controller.forward();
 
     // Navigate after 2 seconds
-    Future.delayed(const Duration(seconds: 2), () {
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        try {
+          final snap = await FirebaseFirestore.instance
+              .collection('users')
+              .doc(user.uid)
+              .collection('transactions')
+              .limit(1)
+              .get();
+
+          if (!mounted) return;
+
+          if (snap.docs.isNotEmpty) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => PinUnlockPage()),
+            );
+            return;
+          }
+        } catch (_) {}
+      }
+
       if (!mounted) return;
       Navigator.pushReplacement(
         context,

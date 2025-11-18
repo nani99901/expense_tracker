@@ -48,6 +48,10 @@ dependencies:
   firebase_auth:
   cloud_firestore:
   month_year_picker: ^0.5.0+1
+  path_provider:
+  open_file: 
+  universal_html: 
+  share_plus:
   flutter_localizations:
     sdk: flutter
 

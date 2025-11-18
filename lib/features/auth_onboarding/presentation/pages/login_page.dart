@@ -78,8 +78,9 @@ Future<void> _submit() async {
       if (user != null) {
         try {
           final snap = await FirebaseFirestore.instance
-              .collectionGroup('transactions')
-              .where('uid', isEqualTo: user.uid)
+              .collection('users')
+              .doc(user.uid)
+              .collection('transactions')
               .limit(1)
               .get();
           if (!mounted) return;
