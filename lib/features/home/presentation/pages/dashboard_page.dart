@@ -126,12 +126,12 @@ class _DashboardPageState extends State<DashboardPage> {
                             width: 36,
                             height: 36,
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEEE5FF),
+                              color: AppColors.primary.withOpacity(0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
                               Icons.notifications_outlined,
-                              color: Color(0xFF7F3DFF),
+                              color: AppColors.primary,
                               size: 20,
                             ),
                           ),

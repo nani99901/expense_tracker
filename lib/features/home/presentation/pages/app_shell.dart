@@ -4,6 +4,7 @@ import 'package:expense_tracker/features/home/presentation/pages/dashboard_page.
 import 'package:expense_tracker/features/home/presentation/pages/save_transaction.dart';
 import 'package:expense_tracker/features/home/presentation/pages/profile_page.dart';
 import 'package:expense_tracker/features/home/presentation/pages/transactions_page.dart';
+import 'package:expense_tracker/features/home/presentation/pages/budget_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -37,7 +38,7 @@ class _AppShellState extends State<AppShell> {
               children: [
                 DashboardPage(),
                 const TransactionsPage(),
-                const _PlaceholderPage(title: 'Budget'),
+                const BudgetPage(),
                 const ProfilePage(),
               ],
             ),
@@ -207,17 +208,17 @@ class _AppShellState extends State<AppShell> {
   }
 }
 
-class _PlaceholderPage extends StatelessWidget {
-  final String title;
-  const _PlaceholderPage({Key? key, required this.title}) : super(key: key);
+// class _PlaceholderPage extends StatelessWidget {
+//   final String title;
+//   const _PlaceholderPage({Key? key, required this.title}) : super(key: key);
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(title)),
-      body: Center(child: Text('$title coming soon')),
-    );
-  }
-}
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       appBar: AppBar(title: Text(title)),
+//       body: Center(child: Text('$title coming soon')),
+//     );
+//   }
+// }
 
 

@@ -107,7 +107,7 @@ class _FinancialReportPageState extends State<FinancialReportPage> {
               )
             else
               Expanded(
-                child: _FinancialReportContent(
+                child: FinancialReportContent(
                   uid: user.uid,
                   selectedMonth: _selectedMonth,
                   showIncome: _showIncome,
@@ -125,13 +125,13 @@ class _FinancialReportPageState extends State<FinancialReportPage> {
   }
 }
 
-class _FinancialReportContent extends StatelessWidget {
+class FinancialReportContent extends StatelessWidget {
   final String uid;
   final DateTime selectedMonth;
   final bool showIncome;
   final ValueChanged<bool> onToggleType;
 
-  const _FinancialReportContent({
+   FinancialReportContent({
     required this.uid,
     required this.selectedMonth,
     required this.showIncome,
