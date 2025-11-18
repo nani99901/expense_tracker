@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="download icon">
+  <rect width="64" height="64" rx="12" fill="#E6E0F3"/>
+  <g transform="translate(8,8) scale(0.875)" fill="none" stroke="#7F3DFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="3.8">
+    <!-- arrow shaft and head -->
+    <path d="M24 6v22" stroke="#7F3DFF"/>
+    <path d="M16 18l8 8 8-8" stroke="#7F3DFF"/>
+    <!-- tray -->
+    <path d="M6 30h28a4 4 0 0 1 4 4v2a4 4 0 0 1-4 4H6" stroke="#7F3DFF"/>
+  </g>
+</svg>
