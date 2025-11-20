@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecurePinManager {
@@ -17,10 +18,16 @@ class SecurePinManager {
   }
 
   Future<bool> verifyPin(String pin) async {
-    final salt = await storage.read(key: "pin_salt");
-    final saved = await storage.read(key: "pin_hash");
-    if (salt == null || saved == null) return false;
-    return saved == _hash(pin, salt);
+    try {
+      final salt = await storage.read(key: "pin_salt");
+      final saved = await storage.read(key: "pin_hash");
+      if (salt == null || saved == null) return false;
+      return saved == _hash(pin, salt);
+    } on PlatformException {
+
+      await clear();
+      return false;
+    }
   }
 
   Future<void> clear() async {
@@ -29,7 +36,12 @@ class SecurePinManager {
   }
 
   Future<bool> hasPin() async {
-    final saved = await storage.read(key: "pin_hash");
-    return saved != null && saved.isNotEmpty;
+    try {
+      final saved = await storage.read(key: "pin_hash");
+      return saved != null && saved.isNotEmpty;
+    } on PlatformException {
+      await clear();
+      return false;
+    }
   }
 }

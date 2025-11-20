@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:crypto/crypto.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class SecureCredentials {
@@ -19,21 +20,35 @@ class SecureCredentials {
   }
 
   Future<bool> verify({required String email, required String password}) async {
-    final savedHash = await storage.read(key: _ns(email, 'hash'));
-    final salt = await storage.read(key: _ns(email, 'salt'));
-    if (savedHash == null || salt == null) return false;
-    return savedHash == _hash(password, salt);
+    try {
+      final savedHash = await storage.read(key: _ns(email, 'hash'));
+      final salt = await storage.read(key: _ns(email, 'salt'));
+      if (savedHash == null || salt == null) return false;
+      return savedHash == _hash(password, salt);
+    } on PlatformException {
+      await clearForEmail(email);
+      return false;
+    }
   }
 
   Future<bool> hasAccount() async {
-    final all = await storage.readAll();
-    return all.keys.any((k) => k.startsWith('cred:') && k.endsWith(':hash'));
+    try {
+      final all = await storage.readAll();
+      return all.keys.any((k) => k.startsWith('cred:') && k.endsWith(':hash'));
+    } on PlatformException {
+      await clearAll();
+      return false;
+    }
   }
 
   Future<void> clearAll() async {
-    final all = await storage.readAll();
-    for (final k in all.keys.where((k) => k.startsWith('cred:'))) {
-      await storage.delete(key: k);
+    try {
+      final all = await storage.readAll();
+      for (final k in all.keys.where((k) => k.startsWith('cred:'))) {
+        await storage.delete(key: k);
+      }
+    } on PlatformException {
+      await storage.deleteAll();
     }
   }
 
